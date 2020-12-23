@@ -157,6 +157,11 @@ const api = (() => {
             return this._invoke('getDictionaryInfo');
         }
 
+        dictionaryForTitle(title) {
+            console.log('dictionaryForTitle(title)');
+            return this._invoke('dictionaryForTitle', {title});
+        }
+
         getDictionaryCounts(dictionaryNames, getTotal) {
             return this._invoke('getDictionaryCounts', {dictionaryNames, getTotal});
         }

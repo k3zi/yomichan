@@ -113,6 +113,7 @@ class Backend {
             ['getZoom',                      {async: true,  contentScript: true,  handler: this._onApiGetZoom.bind(this)}],
             ['getDefaultAnkiFieldTemplates', {async: false, contentScript: true,  handler: this._onApiGetDefaultAnkiFieldTemplates.bind(this)}],
             ['getDictionaryInfo',            {async: true,  contentScript: false, handler: this._onApiGetDictionaryInfo.bind(this)}],
+            ['dictionaryForTitle',           {async: true,  contentScript: true, handler: this._onApiDictionaryForTitle.bind(this)}],
             ['getDictionaryCounts',          {async: true,  contentScript: false, handler: this._onApiGetDictionaryCounts.bind(this)}],
             ['purgeDatabase',                {async: true,  contentScript: false, handler: this._onApiPurgeDatabase.bind(this)}],
             ['getMedia',                     {async: true,  contentScript: true,  handler: this._onApiGetMedia.bind(this)}],
@@ -612,6 +613,11 @@ class Backend {
 
     async _onApiGetDictionaryInfo() {
         return await this._dictionaryDatabase.getDictionaryInfo();
+    }
+
+    async _onApiDictionaryForTitle({title}) {
+        console.log('_onApiDictionaryForTitle({title})');
+        return await this._dictionaryDatabase.dictionaryForTitle(title);
     }
 
     async _onApiGetDictionaryCounts({dictionaryNames, getTotal}) {

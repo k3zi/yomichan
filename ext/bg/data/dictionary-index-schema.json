@@ -38,6 +38,10 @@
             "type": "string",
             "description": "URL for the source of the dictionary."
         },
+        "stylesheet": {
+            "type": "string",
+            "description": "Path to the stylesheet to be applied to each entry."
+        },
         "description": {
             "type": "string",
             "description": "Description of the dictionary data."

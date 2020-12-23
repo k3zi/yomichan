@@ -46,7 +46,7 @@
                                 "type": {
                                     "type": "string",
                                     "description": "The type of the data for this definition.",
-                                    "enum": ["text", "image"]
+                                    "enum": ["text", "html", "image"]
                                 }
                             },
                             "oneOf": [
@@ -64,6 +64,31 @@
                                         "text": {
                                             "type": "string",
                                             "description": "Single definition for the term/expression."
+                                        },
+                                        "audioFile": {
+                                            "type": "string",
+                                            "description": "Audio file path for the term."
+                                        }
+                                    }
+                                },
+                                {
+                                    "required": [
+                                        "type",
+                                        "html"
+                                    ],
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "type": {
+                                            "type": "string",
+                                            "enum": ["html"]
+                                        },
+                                        "html": {
+                                            "type": "string",
+                                            "description": "Single definition for the term/expression."
+                                        },
+                                        "audioFile": {
+                                            "type": "string",
+                                            "description": "Audio file path for the term."
                                         }
                                     }
                                 },
@@ -104,6 +129,10 @@
                                             "type": "boolean",
                                             "description": "Whether or not the image should appear pixelated at sizes larger than the image's native resolution.",
                                             "default": false
+                                        },
+                                        "audioFile": {
+                                            "type": "string",
+                                            "description": "Audio file path for the term."
                                         }
                                     }
                                 }

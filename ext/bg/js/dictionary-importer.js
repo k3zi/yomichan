@@ -45,7 +45,7 @@ class DictionaryImporter {
         const indexFileName = 'index.json';
         const indexFile = archive.files[indexFileName];
         if (!indexFile) {
-            throw new Error('No dictionary index found in archive');
+            throw new Error('No dictionary index found in archive. Found: ' + Object.keys(archive.files));
         }
 
         const index = JSON.parse(await indexFile.async('string'));
@@ -55,6 +55,7 @@ class DictionaryImporter {
 
         const dictionaryTitle = index.title;
         const version = index.format || index.version;
+        const stylesheet = index.stylesheet;
 
         if (!dictionaryTitle || !index.revision) {
             throw new Error('Unrecognized dictionary format');
@@ -164,6 +165,22 @@ class DictionaryImporter {
             }
         }
 
+        if (typeof stylesheet === 'string') {
+            const file = extendedDataContext.archive.file(stylesheet);
+            if (file === null) {
+                console.log(`Could not find stylesheet at path ${JSON.stringify(stylesheet)} for: ${dictionaryTitle}`);
+                return undefined;
+            }
+
+            const content = await file.async('base64');
+            const mediaData = {
+                dictionary: dictionaryTitle,
+                path: stylesheet,
+                content
+            };
+            extendedDataContext.media.set(stylesheet, mediaData);
+        }
+
         const media = [...extendedDataContext.media.values()];
 
         // Add dictionary
@@ -219,11 +236,12 @@ class DictionaryImporter {
             version
         };
 
-        const {author, url, description, attribution} = index;
+        const {author, url, description, attribution, stylesheet} = index;
         if (typeof author === 'string') { summary.author = author; }
         if (typeof url === 'string') { summary.url = url; }
         if (typeof description === 'string') { summary.description = description; }
         if (typeof attribution === 'string') { summary.attribution = attribution; }
+        if (typeof stylesheet === 'string') { summary.stylesheet = stylesheet; }
 
         Object.assign(summary, details);
 
@@ -298,7 +316,9 @@ class DictionaryImporter {
     async _formatDictionaryTermGlossaryObject(data, context, entry) {
         switch (data.type) {
             case 'text':
-                return data.text;
+                return await this._formatDictionaryTermGlossaryText(data, context, entry);
+            case 'html':
+                return await this._formatDictionaryTermGlossaryHTML(data, context, entry);
             case 'image':
                 return await this._formatDictionaryTermGlossaryImage(data, context, entry);
             default:
@@ -306,9 +326,77 @@ class DictionaryImporter {
         }
     }
 
+    async _formatDictionaryTermGlossaryText(data, context, entry) {
+        const dictionary = entry.dictionary;
+        const {text, audioFile} = data;
+        const loadedAudioFile = (typeof audioFile === 'string') ? (await this._loadDictionaryTermGlossaryAudio(audioFile, context, entry)) : undefined;
+        const newData = {
+            type: 'text',
+            text
+        };
+        if (typeof loadedAudioFile === 'string') { newData.audioFile = loadedAudioFile; }
+
+        return newData;
+    }
+
+    async _formatDictionaryTermGlossaryHTML(data, context, entry) {
+        const dictionary = entry.dictionary;
+        const {html, audioFile} = data;
+        const loadedAudioFile = (typeof audioFile === 'string') ? (await this._loadDictionaryTermGlossaryAudio(audioFile, context, entry)) : undefined;
+        const newData = {
+            type: 'html',
+            html
+        };
+        if (typeof loadedAudioFile === 'string') { newData.audioFile = loadedAudioFile; }
+
+        return newData;
+    }
+
+    async _formatDictionaryTermGlossaryText(data, context, entry) {
+        const dictionary = entry.dictionary;
+        const {text, audioFile} = data;
+        const loadedAudioFile = (typeof audioFile === 'string') ? (await this._loadDictionaryTermGlossaryAudio(audioFile, context, entry)) : undefined;
+        const newData = {
+            type: 'text',
+            text
+        };
+        if (typeof loadedAudioFile === 'string') { newData.audioFile = loadedAudioFile; }
+
+        return newData;
+    }
+    async _loadDictionaryTermGlossaryAudio(audioFile, context, entry) {
+        const dictionary = entry.dictionary;
+        if (context.media.has(audioFile)) {
+            // Already exists
+            return audioFile;
+        }
+
+        let errorSource = entry.expression;
+        if (entry.reading.length > 0) {
+            errorSource += ` (${entry.reading});`;
+        }
+
+        const file = context.archive.file(audioFile);
+        if (file === null) {
+            console.log(`Could not find audio at path ${JSON.stringify(audioFile)} for ${errorSource}`);
+            return undefined;
+        }
+
+        const content = await file.async('base64');
+        const mediaData = {
+            dictionary,
+            path: audioFile,
+            content
+        };
+        context.media.set(audioFile, mediaData);
+
+        return audioFile;
+    }
+
     async _formatDictionaryTermGlossaryImage(data, context, entry) {
         const dictionary = entry.dictionary;
-        const {path, width: preferredWidth, height: preferredHeight, title, description, pixelated} = data;
+        const {path, width: preferredWidth, height: preferredHeight, title, description, pixelated, audioFile} = data;
+        const loadedAudioFile = (typeof audioFile === 'string') ? (await this._loadDictionaryTermGlossaryAudio(audioFile, context, entry)) : undefined;
         if (context.media.has(path)) {
             // Already exists
             return data;
@@ -363,6 +451,7 @@ class DictionaryImporter {
         if (typeof title === 'string') { newData.title = title; }
         if (typeof description === 'string') { newData.description = description; }
         if (typeof pixelated === 'boolean') { newData.pixelated = pixelated; }
+        if (typeof loadedAudioFile === 'string') { newData.audioFile = loadedAudioFile; }
 
         return newData;
     }

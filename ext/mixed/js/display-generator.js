@@ -177,12 +177,30 @@ class DisplayGenerator {
             return this._createTermGlossaryItemText(glossary);
         } else if (typeof glossary === 'object' && glossary !== null) {
             switch (glossary.type) {
+                case 'text':
+                    return this._createTermGlossaryItemTextObject(glossary, dictionary);
+                case 'html':
+                    return this._createTermGlossaryItemTextObject(glossary, dictionary);
                 case 'image':
                     return this._createTermGlossaryItemImage(glossary, dictionary);
             }
         }
 
         return null;
+    }
+
+    _createTermGlossaryItemTextObject(glossary, dictionary) {
+        const node = this._templates.instantiate('term-glossary-item');
+        const container = node.querySelector('.term-glossary');
+        switch (glossary.type) {
+            case 'text':
+                this._appendMultilineText(container, glossary.text);
+                break;
+            case 'html':
+                this._appendHTML(container, glossary.html, dictionary);
+                break;
+        }
+        return node;
     }
 
     _createTermGlossaryItemText(glossary) {
@@ -560,5 +578,39 @@ class DisplayGenerator {
             container.appendChild(document.createElement('br'));
             container.appendChild(document.createTextNode(parts[i]));
         }
+    }
+
+    _appendHTML(container, html, dictionary) {
+        const frame = document.createElement('iframe');
+        frame.sandbox = 'allow-same-origin';
+        frame.frameBorder = '0';
+        frame.scrolling = 'no';
+        frame.onLoad = "this.style.height=(this.contentWindow.document.body.scrollHeight+20)+'px'";
+        frame.style.width = '100%';
+        container.appendChild(frame);
+
+        api.dictionaryForTitle(dictionary).then(dict => {
+            console.log(dict);
+            if (!document.body.contains(frame)) return;
+            const content = html;
+            const frameDocument = frame.contentWindow || frame.contentDocument.document || frame.contentDocument;
+            if (dict.stylesheet && this._mediaLoader !== null) {
+                this._mediaLoader.loadMedia(
+                    dict.stylesheet,
+                    dictionary,
+                    (url) => {
+                        frameDocument.document.write(`<html><head><link rel="stylesheet" href="${url}"></link></head>${content}</html>`);
+                        frameDocument.document.close();
+                    },
+                    () => {
+                        frameDocument.document.write(content);
+                        frameDocument.document.close();
+                    }
+                );
+            } else {
+                frameDocument.document.write(content);
+                frameDocument.document.close();
+            }
+        });
     }
 }

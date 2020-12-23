@@ -391,6 +391,11 @@ class DictionaryDatabase {
         });
     }
 
+    async dictionaryForTitle(title) {
+        const query = IDBKeyRange.only(title);
+        return await this._db.find('dictionaries', 'title', query);
+    }
+
     async dictionaryExists(title) {
         const query = IDBKeyRange.only(title);
         const result = await this._db.find('dictionaries', 'title', query);

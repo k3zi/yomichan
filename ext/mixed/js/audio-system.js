@@ -21,9 +21,10 @@
  */
 
 class AudioSystem {
-    constructor({getAudioInfo, cacheSize=32}) {
+    constructor({getAudioInfo, mediaLoader, cacheSize=32}) {
         this._cache = new CacheMap(cacheSize);
         this._getAudioInfo = getAudioInfo;
+        this._mediaLoader = mediaLoader;
     }
 
     prepare() {
@@ -45,6 +46,12 @@ class AudioSystem {
             if (index >= 0) {
                 return {audio, index};
             }
+        }
+
+        if (this._mediaLoader && details.mediaFile) {
+            const media = await this._mediaLoader.getMedia(details.mediaFile, details.dictionary);
+            const audio = await this.createAudio(media.url);
+            return {audio, index: -1};
         }
 
         for (let i = 0, ii = sources.length; i < ii; ++i) {

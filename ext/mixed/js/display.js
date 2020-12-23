@@ -46,15 +46,16 @@ class Display extends EventDispatcher {
         this._index = 0;
         this._audioPlaying = null;
         this._audioFallback = null;
+        this._mediaLoader = new MediaLoader();
         this._audioSystem = new AudioSystem({
-            getAudioInfo: this._getAudioInfo.bind(this)
+            getAudioInfo: this._getAudioInfo.bind(this),
+            mediaLoader: this._mediaLoader
         });
         this._styleNode = null;
         this._eventListeners = new EventListenerCollection();
         this._setContentToken = null;
         this._autoPlayAudioTimer = null;
         this._autoPlayAudioDelay = 400;
-        this._mediaLoader = new MediaLoader();
         this._displayGenerator = new DisplayGenerator({
             japaneseUtil,
             mediaLoader: this._mediaLoader
@@ -1204,8 +1205,13 @@ class Display extends EventDispatcher {
         const definition = this._definitions[definitionIndex];
         if (definition.type === 'kanji') { return; }
 
-        const {expressions} = definition;
+        const {expressions, dictionary} = definition;
         if (expressionIndex < 0 || expressionIndex >= expressions.length) { return; }
+
+        const mediaFile = definition.definitions
+            .map(d => d.glossary.filter(g => typeof g === "object").map(g => g.audioFile))
+            .flat()
+            .filter(a => !!a)[0];
 
         const {expression, reading} = expressions[expressionIndex];
 
@@ -1217,7 +1223,7 @@ class Display extends EventDispatcher {
             try {
                 const {sources, textToSpeechVoice, customSourceUrl} = this._options.audio;
                 let index;
-                ({audio, index} = await this._audioSystem.createDefinitionAudio(sources, expression, reading, {textToSpeechVoice, customSourceUrl}));
+                ({audio, index} = await this._audioSystem.createDefinitionAudio(sources, expression, reading, {dictionary,mediaFile,textToSpeechVoice, customSourceUrl}));
                 info = `From source ${1 + index}: ${sources[index]}`;
             } catch (e) {
                 if (this._audioFallback === null) {
