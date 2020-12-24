@@ -72,6 +72,8 @@ class Display extends EventDispatcher {
         this._contentType = 'clear';
         this._defaultTitle = document.title;
         this._titleMaxLength = 1000;
+        this._query = '';
+        this._rawQuery = '';
         this._fullQuery = '';
         this._documentUtil = new DocumentUtil();
         this._progressIndicator = document.querySelector('#progress-indicator');
@@ -460,6 +462,31 @@ class Display extends EventDispatcher {
         this._updateFocusedElement();
     }
 
+    searchLast() {
+        const type = this._contentType;
+        if (type === 'clear') { return; }
+        const query = this._rawQuery;
+        const state = (
+            this._historyHasState() ?
+            clone(this._history.state) :
+            {
+                focusEntry: 0,
+                sentence: {text: query, offset: 0},
+                url: window.location.href
+            }
+        );
+        const details = {
+            focus: false,
+            history: false,
+            params: this._createSearchParams(type, query, false),
+            state,
+            content: {
+                definitions: null
+            }
+        };
+        this.setContent(details);
+    }
+
     // Message handlers
 
     _onMessage({action, params}, sender, callback) {
@@ -561,6 +588,8 @@ class Display extends EventDispatcher {
             let clear = true;
             this._historyHasChanged = true;
             this._contentType = type;
+            this._query = '';
+            this._rawQuery = '';
             const eventArgs = {type, urlSearchParams, token};
 
             // Set content
@@ -571,9 +600,11 @@ class Display extends EventDispatcher {
                         let query = urlSearchParams.get('query');
                         if (!query) { break; }
 
+                        this._query = query;
                         clear = false;
                         const isTerms = (type === 'terms');
                         query = this.postProcessQuery(query);
+                        this._rawQuery = query;
                         let queryFull = urlSearchParams.get('full');
                         queryFull = (queryFull !== null ? this.postProcessQuery(queryFull) : query);
                         const wildcardsEnabled = (urlSearchParams.get('wildcards') !== 'off');
@@ -612,14 +643,20 @@ class Display extends EventDispatcher {
 
     _onQueryParserSearch({type, definitions, sentence, inputInfo: {cause}, textSource, optionsContext}) {
         const query = textSource.text();
-        const history = (cause === 'click');
+        const historyState = this._history.state;
+        const history = (
+            cause === 'click' ||
+            !isObject(historyState) ||
+            historyState.cause !== 'queryParser'
+        );
         const details = {
             focus: false,
             history,
             params: this._createSearchParams(type, query, false),
             state: {
                 sentence,
-                optionsContext
+                optionsContext,
+                cause: 'queryParser'
             },
             content: {
                 definitions
@@ -1778,6 +1815,8 @@ class Display extends EventDispatcher {
                 searchOnClick: true,
                 searchOnClickOnly: true
             });
+            const excludeSelectors = ['.scan-disable', '.scan-disable *'];
+            this._definitionTextScanner.excludeSelector = excludeSelectors.join(',');
             this._definitionTextScanner.prepare();
             this._definitionTextScanner.on('searched', this._onDefinitionTextScannerSearched.bind(this));
         }
